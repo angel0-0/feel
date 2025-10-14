@@ -3,5 +3,16 @@
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
 
+    <color name="raisin">#30292F</color>
+    <color name="eng_violet">#413F54</color>
+    <color name="ultraviolet">#504D7B</color>
+    <color name="ultraviolet_light">#5F5AA2</color> <!-- primary -->
+    <color name="yi_blue">#4A589A</color> <!-- secondary -->
+    <color name="mn_blue">#355691</color> <!-- primary -->
+    <color name="grayblue">#3A4B6B</color> <!-- secondary -->
+    <color name="onyx">#3F4045</color>
+    <color name="indigo">#7F7BB7</color> <!-- accent -->
+    <color name="true_blue">#426BB3</color> <!-- accent -->
+
 </resources>
 
