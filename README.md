@@ -22,7 +22,7 @@ Usuarios saturados por notificaciones, feeds infinitos y pantallas llenas de opc
 Pantalla inicial negra con un botón centrado: "feel". Al tocarlo, aparecen tres opciones (en un diálogo o menú simple):  
 • falling: muestra al azar una frase de la lista A a pantalla completa por unos segundos y cierra la app al finalizar.  
 • rising: igual que la anterior, pero con lista B.  
-• you: indica “coloca el teléfono a la altura de tu rostro”, abre cámara frontal con un overlay estilo espejo y texto tipo “it’s still you” o variaciones; no toma fotos; tras unos segundos, cierra la app.  
+• you: repositorio de frases añadidas directamente por el usuario.  
 
 Comportamientos clave  
 • Sin navegación adicional, menús ni historial. • Sin compartir ni guardar. Un solo gesto lo inicia; una sola lectura lo termina. • Si el usuario niega el permiso de cámara, la opción you muestra un mensaje breve y regresa al menú de opciones.  
@@ -49,25 +49,11 @@ Gestión del contenido
 • Animaciones simples para mostrar opciones y frases.   
 • Texto accesible para lectores de pantalla; vibración ligera al interactuar.  
 
-
-/// 
-## 4.4 Arquitectura y tecnología
-• Lenguaje y UI: Java, layouts XML. 
-• Estructura: Activities y/o Fragments con controladores sencillos.   
-• Lógica: manejo directo en clases Java con métodos de selección aleatoria de frases.   
-• Cámara: integración con CameraX o API estándar de cámara para preview frontal; overlay dibujado sobre un SurfaceView/TextureView.   
-• Permisos: gestionados con el sistema de Android (Runtime Permissions).   
-• Cierre controlado: se programa finalización de la Activity tras mostrar contenido.   
-• Dependencias mínimas para reducir tamaño y complejidad.  
-///
-
-
-### 4.5 Privacidad y seguridad  
+### 4.4 Privacidad y seguridad  
 • Sin red, sin analytics, sin almacenamiento de imágenes o datos personales.   
 • Cámara en preview únicamente; no se persisten frames. Permisos solicitados solo al entrar en you.  
 
-### 4.6 Riesgos y mitigaciones  
-• Permisos de cámara denegados: ruta alternativa informativa.   
+### 4.5 Riesgos y mitigaciones    
 • Variaciones de dispositivos: probar en al menos 3 modelos y versiones Android (API 29+).   
 • Auto-cierre percibido como brusco: se usará desvanecido (o pantalla de despedida rápida) para suavizar salida.   
 
@@ -76,7 +62,7 @@ Gestión del contenido
 Incluido  
 • Pantalla inicial con botón “feel” y menú de tres opciones.   
 • Visualización de frases a pantalla completa con temporizador y salida automática.   
-• Módulo you con cámara frontal, overlay y texto.   
+• Módulo you con overlay y texto.  
 • Contenido local en dos listas de frases y una de overlay.   
 • Diseño accesible, oscuro y sin anuncios.  
 
