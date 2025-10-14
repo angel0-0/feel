@@ -103,9 +103,8 @@ Este proyecto es desarrollado con fines académicos para el curso de Desarrollo 
 
 ---
 
-_Desarrollado por: [Nombre del estudiante]_  
-_Curso: Desarrollo Android_  
-*Fecha: Octubre 2025*rado con animación sutil
+_Desarrollado por: Angel y Axel
+\_Fecha: Octubre 2025_
 
 -  Detección de sensor de proximidad para activación
 -  Vibración ligera al tocar (accesibilidad)
