@@ -4,8 +4,8 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="@android:color/black"
-    tools:context=".PhraseActivity">
+    android:background="@color/eng_violet"
+    tools:context=".PhraseFragment">
 
     <TextView
         android:id="@+id/fullscreen_phrase_text"
@@ -14,9 +14,9 @@
         android:layout_marginStart="32dp"
         android:layout_marginEnd="32dp"
         android:gravity="center"
-        android:textColor="@color/white"
-        android:textSize="28sp"
+        android:textColor="@android:color/white"
         android:fontFamily="@font/tribtwo"
+        android:textSize="34sp"
         app:layout_constraintBottom_toBottomOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"

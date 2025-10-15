@@ -2,6 +2,7 @@
 <resources>
     <color name="black">#FF000000</color>
     <color name="white">#FFFFFFFF</color>
+    <color name="white_transparent">#80FFFFFF</color>
 
     <color name="raisin">#30292F</color>
     <color name="eng_violet">#413F54</color>
@@ -15,4 +16,3 @@
     <color name="true_blue">#426BB3</color> <!-- accent -->
 
 </resources>
-

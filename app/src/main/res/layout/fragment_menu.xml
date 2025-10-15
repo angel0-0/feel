@@ -5,7 +5,7 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:background="@color/raisin"
-    tools:context=".SelectionActivity">
+    tools:context=".MenuFragment">
 
     <LinearLayout
         android:layout_width="wrap_content"
@@ -16,6 +16,15 @@
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/falling_countdown_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:visibility="gone"
+            tools:text="60s" />
 
         <Button
             android:id="@+id/falling_button"
@@ -28,12 +37,21 @@
             android:textColor="@color/white"
             android:textSize="96sp" />
 
+        <TextView
+            android:id="@+id/rising_countdown_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="16dp"
+            android:textColor="@color/white"
+            android:textSize="18sp"
+            android:visibility="gone"
+            tools:text="60s" />
+
         <Button
             android:id="@+id/rising_button"
             style="@style/Widget.Material3.Button.TextButton"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
             android:fontFamily="@font/another_tag"
             android:text="rising"
             android:textAllCaps="true"
