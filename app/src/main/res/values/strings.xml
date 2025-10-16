@@ -1,3 +1,25 @@
 <resources>
     <string name="app_name">f e e l</string>
+
+    <string-array name="falling_phrases">
+        <item>will you believe me when im covered in blood?</item>
+        <item>foxes are weird</item>
+        <item>my love runs deeper than words,</item>
+        <item>more than you´ll ever know,</item>
+        <item>more than i´ll ever tell you.</item>
+    </string-array>
+
+    <string-array name="rising_phrases">
+        <item>stay up late, wake up late.</item>
+        <item>actions, not words.</item>
+        <item>try again.</item>
+        <item>dare to act.</item>
+        <item>he who has a why,</item>
+        <item>can bear almost any how.</item>
+    </string-array>
+
+    <string-array name="you_phrases">
+        <item>it’s still you</item>
+    </string-array>
+
 </resources>

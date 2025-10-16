@@ -1,9 +1,34 @@
 <resources xmlns:tools="http://schemas.android.com/tools">
     <!-- Base application theme. -->
     <style name="Base.Theme.FEEL" parent="Theme.Material3.DayNight.NoActionBar">
-        <!-- Customize your light theme here. -->
-        <!-- <item name="colorPrimary">@color/my_light_primary</item> -->
+        <!-- Colores primarios -->
+        <item name="colorPrimary">@color/ultraviolet_light</item>
+        <item name="colorPrimaryVariant">@color/ultraviolet</item>
+        <item name="colorOnPrimary">@color/white</item>
+
+        <!-- Colores secundarios -->
+        <item name="colorSecondary">@color/yi_blue</item>
+        <item name="colorSecondaryVariant">@color/mn_blue</item>
+        <item name="colorOnSecondary">@color/white</item>
+
+        <!-- Color de acento -->
+        <item name="colorAccent">@color/indigo</item>
+
+        <!-- Color de fondo y superficies -->
+        <item name="android:colorBackground">@color/raisin</item>
+        <item name="colorSurface">@color/eng_violet</item>
+        <item name="colorOnBackground">@color/white</item>
+        <item name="colorOnSurface">@color/white</item>
+
     </style>
 
     <style name="Theme.FEEL" parent="Base.Theme.FEEL" />
+
+    <!-- Estilo para AlertDialog -->
+    <style name="Theme.FEEL.Dialog" parent="Theme.AppCompat.Dialog.Alert">
+        <item name="android:background">@color/raisin</item>
+        <item name="android:textColor">@color/white</item>
+        <item name="android:textColorPrimary">@color/white</item>
+    </style>
+
 </resources>
