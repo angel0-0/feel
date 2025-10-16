@@ -15,8 +15,8 @@ import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
-import java.util.Arrays;
 import java.util.Random;
+import java.util.Set;
 
 public class PhraseFragment extends Fragment {
 
@@ -49,7 +49,6 @@ public class PhraseFragment extends Fragment {
 
         view.setBackgroundColor(ContextCompat.getColor(getContext(), colorResId));
 
-        // Start with the text invisible
         phraseTextView.setAlpha(0f);
 
         String[] phrases = getPhrasesForCategory(category);
@@ -59,13 +58,16 @@ public class PhraseFragment extends Fragment {
             String randomPhrase = phrases[randomIndex];
             phraseTextView.setText(randomPhrase);
         } else {
-            phraseTextView.setText("you haven't added any phrases, yet...");
+            if ("you".equals(category.toLowerCase())) {
+                phraseTextView.setText("you haven\'t added any phrases, yet...");
+            } else {
+                phraseTextView.setText("could not load phrases.");
+            }
         }
 
-        // Animate the text to appear slowly
         phraseTextView.animate()
                 .alpha(1f)
-                .setDuration(3000) // 3 seconds
+                .setDuration(3000)
                 .start();
 
         new Handler(Looper.getMainLooper()).postDelayed(() -> {
@@ -80,19 +82,20 @@ public class PhraseFragment extends Fragment {
             return null;
         }
 
-        if (category.equals("you")) {
-            SharedPreferences prefs = requireActivity().getSharedPreferences("FeelAppPrefs", Context.MODE_PRIVATE);
-            String phrasesString = prefs.getString("user_phrases", "");
-            if (phrasesString.isEmpty()) {
+        switch (category.toLowerCase()) {
+            case "you":
+                SharedPreferences prefs = requireContext().getSharedPreferences("user_phrases", Context.MODE_PRIVATE);
+                Set<String> userPhrases = prefs.getStringSet("you_phrases", null);
+                if (userPhrases == null || userPhrases.isEmpty()) {
+                    return null;
+                }
+                return userPhrases.toArray(new String[0]);
+            case "rising":
+                return getResources().getStringArray(R.array.rising_phrases);
+            case "falling":
+                return getResources().getStringArray(R.array.falling_phrases);
+            default:
                 return null;
-            }
-            return phrasesString.split("\\|\\|");
-        } else {
-            int arrayId = getResources().getIdentifier(category + "_phrases", "array", requireActivity().getPackageName());
-            if (arrayId == 0) {
-                return null;
-            }
-            return getResources().getStringArray(arrayId);
         }
     }
 }

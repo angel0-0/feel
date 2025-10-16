@@ -7,6 +7,10 @@
         <item>my love runs deeper than words,</item>
         <item>more than you´ll ever know,</item>
         <item>more than i´ll ever tell you.</item>
+        <item>some promises dissolve in rain.</item>
+        <item>i was young enough to run, old enough to ache.</item>
+        <item>When boiling water doesn’t burn anymore.</item>
+        <item>Because we always want to return.</item>
     </string-array>
 
     <string-array name="rising_phrases">
@@ -16,6 +20,7 @@
         <item>dare to act.</item>
         <item>he who has a why,</item>
         <item>can bear almost any how.</item>
+        <item>Love, don’t cry, I see light in your sorrows.</item>
     </string-array>
 
     <string-array name="you_phrases">
