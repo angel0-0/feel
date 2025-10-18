@@ -4,18 +4,40 @@
     <string-array name="falling_phrases">
         <item>will you believe me when im covered in blood?</item>
         <item>foxes are weird</item>
-        <item>my love runs deeper than words,</item>
-        <item>more than you´ll ever know,</item>
-        <item>more than i´ll ever tell you.</item>
+        <item>(mylove 1/3) my love runs deeper than words,</item>
+        <item>(mylove 2/3) more than you´ll ever know,</item>
+        <item>(mylove 3/3) more than i´ll ever tell you.</item>
+        <item>selfdestruct</item>
+        <item>it´s okay</item>
+        <item>your happiness was all i ever wanted</item>
+        <item>(prep 1/2) i prepared for the fall, </item>
+        <item>(prep 2/2) but it didn´t hurt any less</item>
+        <item>i shall carry you forever</item>
+        <item>(saymiss 1/3) you say you miss me, </item>
+        <item>(saymiss 2/3) but you had me, </item>
+        <item>(saymiss 3/3) and chose to lose me.</item>
+        <item>we accept the love we think we deserve</item>
+        <item>why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why why </item>
     </string-array>
 
     <string-array name="rising_phrases">
         <item>stay up late, wake up late.</item>
         <item>actions, not words.</item>
-        <item>try again.</item>
+        <item>fail, and try again.</item>
+        <item>change what you can. yourself.</item>
         <item>dare to act.</item>
-        <item>he who has a why,</item>
-        <item>can bear almost any how.</item>
+        <item>you become what you think</item>
+        <item>you are right where your habits got you</item>
+        <item>(whyhow 1/2) he who has a why,</item>
+        <item>(whyhow 2/2) can bear almost any how.</item>
+        <item>you own explanations to nobody.</item>
+        <item>(adv 1/2) why would you take criticism</item>
+        <item>(adv 2/2) from someone you wouldn´t take advise?</item>
+        <item>(oneblf 1/2) one who believes in himself</item>
+        <item>(oneblf 2/2) has no need to convince others</item>
+        <item>delusion is key</item>
+        <item>(win 1/2) everything is a win</item>
+        <item>(win 2/2)when the goal is experience</item>
     </string-array>
 
     <string-array name="you_phrases">

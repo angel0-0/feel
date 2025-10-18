@@ -23,7 +23,7 @@ public class MenuFragment extends Fragment {
     private static final String PREFS_NAME = "FeelAppPrefs";
     private static final String KEY_FALLING_UNLOCK_TIME = "falling_unlock_time";
     private static final String KEY_RISING_UNLOCK_TIME = "rising_unlock_time";
-    private static final long BLOCK_DURATION_MS = 60000; // 60 seconds
+    private static final long BLOCK_DURATION_MS = 3000; // 60 seconds (para fines de tests son 3 segundos)
 
     private Button fallingButton;
     private Button risingButton;
