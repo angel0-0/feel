@@ -20,10 +20,8 @@ import androidx.fragment.app.Fragment;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -35,7 +33,8 @@ public class PhraseFragment extends Fragment {
 
     private static final String PREFS_NAME = "FeelAppPrefs";
     private static final String KEY_HISTORY_PREFIX = "history_";
-    private static final String KEY_PROGRESSIVE_PREFIX = "progressive_";
+    private static final String KEY_ACTIVE_GROUP_PREFIX = "active_group_";
+    private static final String KEY_NEXT_STEP_PREFIX = "next_step_";
     private static final int HISTORY_SIZE = 3;
 
     // Messages
@@ -80,7 +79,8 @@ public class PhraseFragment extends Fragment {
 
         String selectedPhrase = getNextPhrase(category);
 
-        String displayText = selectedPhrase.replaceAll("^\\s*\\(\\w+\\s+(\\d+/\\d+)\\)\\s*", "($1) ");
+        // Regex to show only the counter, not the group name. E.g. "(2/3) some text"
+        String displayText = selectedPhrase.replaceAll("^\\s*\\(.+?\\s+(\\d+/\\d+)\\)\\s*", "($1) ");
         phraseTextView.setText(displayText);
 
         phraseTextView.animate().alpha(1f).setDuration(1500).start();
@@ -104,76 +104,57 @@ public class PhraseFragment extends Fragment {
             return MSG_NO_PHRASES_ADDED;
         }
 
-        // Priority 1: Find a mandatory sequential phrase that MUST be shown next.
-        String mandatoryPhrase = findNextMandatoryPhrase(allPhrases, category, prefs);
-        if (mandatoryPhrase != null) {
-            return mandatoryPhrase;
-        }
-
-        // Priority 2: If no mandatory phrase, get a random one from the pool of "starter" phrases.
-        List<String> availablePhrases = getAvailableInitialPhrases(allPhrases);
-        availablePhrases.removeAll(getRecentHistory(category, prefs));
-
-        // If the pool is empty, it means we've seen everything recently.
-        if (availablePhrases.isEmpty()) {
-            List<String> allInitialPhrases = getAvailableInitialPhrases(allPhrases);
-            Set<String> historySet = new HashSet<>(getRecentHistory(category, prefs));
-
-            // If the history contains all possible initial phrases, we've completed a full cycle.
-            if (historySet.containsAll(new HashSet<>(allInitialPhrases))) {
-                // Clear history and progressive state to start over.
-                prefs.edit()
-                    .remove(KEY_HISTORY_PREFIX + category)
-                    .remove(KEY_PROGRESSIVE_PREFIX + category)
-                    .commit();
-                // Rerun logic to get a fresh phrase.
-                return getNextPhrase(category);
-            }
-            return MSG_END_OF_PHRASES; // Nothing new to show right now.
-        }
-
-        // Return a random phrase from the available pool.
-        return availablePhrases.get(new Random().nextInt(availablePhrases.size()));
-    }
-
-    // Finds a phrase that is the direct continuation of a series (e.g., part 2 after part 1).
-    private String findNextMandatoryPhrase(String[] allPhrases, String category, SharedPreferences prefs) {
-        Set<String> unlocked = prefs.getStringSet(KEY_PROGRESSIVE_PREFIX + category, new HashSet<>());
-        if (unlocked.isEmpty()) {
-            return null;
-        }
-        Pattern pattern = Pattern.compile("^\\s*\\((\\w+)\\s(\\d+)/(\\d+)\\)");
-
-        for (String phrase : allPhrases) {
-            Matcher matcher = pattern.matcher(phrase);
-            if (matcher.find()) {
-                String group = matcher.group(1);
-                int step = Integer.parseInt(matcher.group(2));
-                if (step > 1) {
-                    String prevStepKey = group + "_" + (step - 1);
-                    String currentStepKey = group + "_" + step;
-                    // If previous part is unlocked AND current part is not, this is the one.
-                    if (unlocked.contains(prevStepKey) && !unlocked.contains(currentStepKey)) {
-                        return phrase;
+        // Priority 1: Check for an active, mandatory sequence.
+        String activeGroup = prefs.getString(KEY_ACTIVE_GROUP_PREFIX + category, null);
+        if (activeGroup != null) {
+            int nextStep = prefs.getInt(KEY_NEXT_STEP_PREFIX + category, -1);
+            if (nextStep != -1) {
+                // Pattern to find the exact next phrase in the sequence.
+                Pattern pattern = Pattern.compile("^\\s*\\(" + Pattern.quote(activeGroup) + "\\s+" + nextStep + "/\\d+\\)");
+                for (String phrase : allPhrases) {
+                    if (pattern.matcher(phrase).find()) {
+                        return phrase; // Found the mandatory next phrase.
                     }
                 }
             }
+            // Fallback: If the mandatory phrase wasn't found (data error), clear the sequence to prevent getting stuck.
+            prefs.edit()
+                    .remove(KEY_ACTIVE_GROUP_PREFIX + category)
+                    .remove(KEY_NEXT_STEP_PREFIX + category)
+                    .commit();
         }
-        return null;
+
+        // Priority 2: Find a random "starter" phrase (part 1 or non-progressive) that is not in recent history.
+        List<String> initialPhrases = getAvailableInitialPhrases(allPhrases);
+        if (initialPhrases.isEmpty()) {
+            return MSG_END_OF_PHRASES;
+        }
+
+        List<String> availablePhrases = new ArrayList<>(initialPhrases);
+        availablePhrases.removeAll(getRecentHistory(category, prefs));
+
+        if (!availablePhrases.isEmpty()) {
+            return availablePhrases.get(new Random().nextInt(availablePhrases.size()));
+        }
+
+        // Priority 3: All starters have been seen recently. To avoid getting stuck, clear the history for this category and pick one.
+        prefs.edit().remove(KEY_HISTORY_PREFIX + category).commit();
+        return initialPhrases.get(new Random().nextInt(initialPhrases.size()));
     }
 
-    // Gets a pool of phrases for random selection: non-progressive and 1st parts of series.
     private List<String> getAvailableInitialPhrases(String[] allPhrases) {
         List<String> available = new ArrayList<>();
-        Pattern pattern = Pattern.compile("^\\s*\\((\\w+)\\s(\\d+)/(\\d+)\\)");
+        Pattern pattern = Pattern.compile("^\\s*\\((.+?)\\s+(\\d+)/(\\d+)\\)");
         for (String phrase : allPhrases) {
             Matcher matcher = pattern.matcher(phrase);
             if (matcher.find()) {
-                if (Integer.parseInt(matcher.group(2)) == 1) {
-                    available.add(phrase); // It's a part 1, so it's a "starter"
+                // It's a progressive phrase. Only add it if it's part 1.
+                if ("1".equals(matcher.group(2))) {
+                    available.add(phrase);
                 }
             } else {
-                available.add(phrase); // Not a progressive phrase
+                // Not a progressive phrase, so it's a starter.
+                available.add(phrase);
             }
         }
         return available;
@@ -181,27 +162,37 @@ public class PhraseFragment extends Fragment {
 
     private List<String> getRecentHistory(String category, SharedPreferences prefs) {
         String historyString = prefs.getString(KEY_HISTORY_PREFIX + category, "");
-        if (historyString.isEmpty()) {
-            return new ArrayList<>();
-        }
-        return new ArrayList<>(Arrays.asList(historyString.split("\\|\\|")));
+        return historyString.isEmpty() ? new ArrayList<>() : new ArrayList<>(Arrays.asList(historyString.split("\\|\\|")));
     }
 
     private void saveProgress(String category, String chosenPhrase) {
         SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
 
-        Pattern pattern = Pattern.compile("^\\s*\\((\\w+)\\s(\\d+)/(\\d+)\\)");
+        Pattern pattern = Pattern.compile("^\\s*\\((.+?)\\s+(\\d+)/(\\d+)\\)");
         Matcher matcher = pattern.matcher(chosenPhrase);
+
         if (matcher.find()) {
             String group = matcher.group(1);
             int step = Integer.parseInt(matcher.group(2));
-            String unlockKey = group + "_" + step;
-            Set<String> unlocked = new HashSet<>(prefs.getStringSet(KEY_PROGRESSIVE_PREFIX + category, new HashSet<>()));
-            unlocked.add(unlockKey);
-            editor.putStringSet(KEY_PROGRESSIVE_PREFIX + category, unlocked);
+            int total = Integer.parseInt(matcher.group(3));
+
+            if (step < total) {
+                // Sequence in progress: set the next mandatory step.
+                editor.putString(KEY_ACTIVE_GROUP_PREFIX + category, group);
+                editor.putInt(KEY_NEXT_STEP_PREFIX + category, step + 1);
+            } else {
+                // Sequence complete: clear the state.
+                editor.remove(KEY_ACTIVE_GROUP_PREFIX + category);
+                editor.remove(KEY_NEXT_STEP_PREFIX + category);
+            }
+        } else {
+            // Not a progressive phrase: ensure no sequence is active.
+            editor.remove(KEY_ACTIVE_GROUP_PREFIX + category);
+            editor.remove(KEY_NEXT_STEP_PREFIX + category);
         }
 
+        // Update recent history to avoid immediate repeats.
         List<String> history = getRecentHistory(category, prefs);
         history.add(0, chosenPhrase);
         while (history.size() > HISTORY_SIZE) {
@@ -209,19 +200,14 @@ public class PhraseFragment extends Fragment {
         }
         editor.putString(KEY_HISTORY_PREFIX + category, String.join("||", history));
 
-        editor.commit(); // Use commit() to ensure data is saved before the next fragment loads.
+        // Commit synchronously to ensure the state is saved before the next phrase is requested.
+        editor.commit();
     }
 
     private String[] getPhrasesForCategory(String category) {
-        if (category == null) return null;
-        if (category.equals("you")) {
-            // "you" phrases are stored in strings.xml now
-            int arrayId = getResources().getIdentifier("you_phrases", "array", requireActivity().getPackageName());
-            return (arrayId == 0) ? null : getResources().getStringArray(arrayId);
-        } else {
-            int arrayId = getResources().getIdentifier(category + "_phrases", "array", requireActivity().getPackageName());
-            if (arrayId == 0) return null;
-            return getResources().getStringArray(arrayId);
-        }
+        if (category == null) return new String[0];
+        String packageName = requireActivity().getPackageName();
+        int arrayId = getResources().getIdentifier(category + "_phrases", "array", packageName);
+        return (arrayId == 0) ? new String[0] : getResources().getStringArray(arrayId);
     }
 }
