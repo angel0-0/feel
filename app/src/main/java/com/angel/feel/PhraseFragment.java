@@ -10,18 +10,21 @@ import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
-
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.appcompat.app.AlertDialog;
 import androidx.core.content.ContextCompat;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
 
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -29,9 +32,16 @@ public class PhraseFragment extends Fragment {
 
     private static final String ARG_CATEGORY = "category";
     private static final String ARG_COLOR_RES_ID = "colorResId";
-    private static final int DISPLAY_DURATION_MS = 4000; // 4 seconds
+    private static final int DISPLAY_DURATION_MS = 4000;
+
+    private String currentPhrase;
+    private Handler autoCloseHandler = new Handler(Looper.getMainLooper());
+    private Runnable autoCloseRunnable;
 
     private static final String PREFS_NAME = "FeelAppPrefs";
+    private static final String USER_PHRASES_PREFS = "user_phrases";
+    private static final String KEY_USER_PHRASES = "you_phrases";
+
     private static final String KEY_HISTORY_PREFIX = "history_";
     private static final String KEY_ACTIVE_GROUP_PREFIX = "active_group_";
     private static final String KEY_NEXT_STEP_PREFIX = "next_step_";
@@ -61,39 +71,55 @@ public class PhraseFragment extends Fragment {
         super.onViewCreated(view, savedInstanceState);
 
         TextView phraseTextView = view.findViewById(R.id.fullscreen_phrase_text);
+        ImageButton deleteButton = view.findViewById(R.id.delete_phrase_button);
         String category = getArguments().getString(ARG_CATEGORY);
         int colorResId = getArguments().getInt(ARG_COLOR_RES_ID);
 
         view.setBackgroundColor(ContextCompat.getColor(requireContext(), colorResId));
 
-        if ("you".equals(category)) {
-            try {
-                Typeface typeface = ResourcesCompat.getFont(requireContext(), R.font.lostar);
-                phraseTextView.setTypeface(typeface);
-            } catch (Exception e) {
-                Log.e("PhraseFragment", "Could not load font: R.font.lostar", e);
-            }
+        // Set font based on category
+        Typeface typeface;
+        if ("you".equalsIgnoreCase(category)) {
+            typeface = ResourcesCompat.getFont(requireContext(), R.font.lostar);
+        } else {
+            typeface = ResourcesCompat.getFont(requireContext(), R.font.tribtwo);
         }
-
+        phraseTextView.setTypeface(typeface);
         phraseTextView.setAlpha(0f);
 
-        String selectedPhrase = getNextPhrase(category);
+        currentPhrase = getNextPhrase(category);
 
         // Regex to show only the counter, not the group name. E.g. "(2/3) some text"
-        String displayText = selectedPhrase.replaceAll("^\\s*\\(.+?\\s+(\\d+/\\d+)\\)\\s*", "($1) ");
+        String displayText = currentPhrase.replaceAll("^\\s*\\(.+?\\s+(\\d+/\\d+)\\)\\s*", "($1) ");
         phraseTextView.setText(displayText);
 
-        phraseTextView.animate().alpha(1f).setDuration(1500).start();
-
-        if (!selectedPhrase.equals(MSG_NO_PHRASES_ADDED) && !selectedPhrase.equals(MSG_END_OF_PHRASES)) {
-            saveProgress(category, selectedPhrase);
+        // Handle delete button visibility
+        if ("you".equalsIgnoreCase(category) && !currentPhrase.equals(MSG_NO_PHRASES_ADDED)) {
+            deleteButton.setVisibility(View.VISIBLE);
+            deleteButton.setOnClickListener(v -> showDeleteConfirmationDialog());
+        } else {
+            deleteButton.setVisibility(View.GONE);
         }
 
-        new Handler(Looper.getMainLooper()).postDelayed(() -> {
+        // Animate and schedule auto-close
+        phraseTextView.animate().alpha(1f).setDuration(1500).start();
+
+        if (!currentPhrase.equals(MSG_NO_PHRASES_ADDED) && !currentPhrase.equals(MSG_END_OF_PHRASES)) {
+            saveProgress(category, currentPhrase);
+        }
+
+        autoCloseRunnable = () -> {
             if (isAdded()) {
                 getParentFragmentManager().popBackStack();
             }
-        }, DISPLAY_DURATION_MS);
+        };
+        autoCloseHandler.postDelayed(autoCloseRunnable, DISPLAY_DURATION_MS);
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        autoCloseHandler.removeCallbacks(autoCloseRunnable);
     }
 
     private String getNextPhrase(String category) {
@@ -109,7 +135,6 @@ public class PhraseFragment extends Fragment {
         if (activeGroup != null) {
             int nextStep = prefs.getInt(KEY_NEXT_STEP_PREFIX + category, -1);
             if (nextStep != -1) {
-                // Pattern to find the exact next phrase in the sequence.
                 Pattern pattern = Pattern.compile("^\\s*\\(" + Pattern.quote(activeGroup) + "\\s+" + nextStep + "/\\d+\\)");
                 for (String phrase : allPhrases) {
                     if (pattern.matcher(phrase).find()) {
@@ -117,7 +142,7 @@ public class PhraseFragment extends Fragment {
                     }
                 }
             }
-            // Fallback: If the mandatory phrase wasn't found (data error), clear the sequence to prevent getting stuck.
+            // Fallback: If mandatory phrase wasn't found (data error), clear sequence to prevent getting stuck.
             prefs.edit()
                     .remove(KEY_ACTIVE_GROUP_PREFIX + category)
                     .remove(KEY_NEXT_STEP_PREFIX + category)
@@ -137,9 +162,26 @@ public class PhraseFragment extends Fragment {
             return availablePhrases.get(new Random().nextInt(availablePhrases.size()));
         }
 
-        // Priority 3: All starters have been seen recently. To avoid getting stuck, clear the history for this category and pick one.
+        // Priority 3: All starters have been seen recently. Clear history and pick one to avoid getting stuck.
         prefs.edit().remove(KEY_HISTORY_PREFIX + category).commit();
         return initialPhrases.get(new Random().nextInt(initialPhrases.size()));
+    }
+
+    private String[] getPhrasesForCategory(String category) {
+        if (category == null) return new String[0];
+
+        if ("you".equalsIgnoreCase(category)) {
+            SharedPreferences prefs = requireContext().getSharedPreferences(USER_PHRASES_PREFS, Context.MODE_PRIVATE);
+            Set<String> userPhrases = prefs.getStringSet(KEY_USER_PHRASES, null);
+            if (userPhrases == null || userPhrases.isEmpty()) {
+                return new String[0];
+            }
+            return userPhrases.toArray(new String[0]);
+        } else {
+            String packageName = requireActivity().getPackageName();
+            int arrayId = getResources().getIdentifier(category.toLowerCase() + "_phrases", "array", packageName);
+            return (arrayId == 0) ? new String[0] : getResources().getStringArray(arrayId);
+        }
     }
 
     private List<String> getAvailableInitialPhrases(String[] allPhrases) {
@@ -148,12 +190,10 @@ public class PhraseFragment extends Fragment {
         for (String phrase : allPhrases) {
             Matcher matcher = pattern.matcher(phrase);
             if (matcher.find()) {
-                // It's a progressive phrase. Only add it if it's part 1.
-                if ("1".equals(matcher.group(2))) {
+                if ("1".equals(matcher.group(2))) { // Progressive phrase, part 1
                     available.add(phrase);
                 }
-            } else {
-                // Not a progressive phrase, so it's a starter.
+            } else { // Not a progressive phrase
                 available.add(phrase);
             }
         }
@@ -200,14 +240,35 @@ public class PhraseFragment extends Fragment {
         }
         editor.putString(KEY_HISTORY_PREFIX + category, String.join("||", history));
 
-        // Commit synchronously to ensure the state is saved before the next phrase is requested.
+        // Commit synchronously to ensure state is saved before the next phrase is requested.
         editor.commit();
     }
 
-    private String[] getPhrasesForCategory(String category) {
-        if (category == null) return new String[0];
-        String packageName = requireActivity().getPackageName();
-        int arrayId = getResources().getIdentifier(category + "_phrases", "array", packageName);
-        return (arrayId == 0) ? new String[0] : getResources().getStringArray(arrayId);
+    private void showDeleteConfirmationDialog() {
+        new AlertDialog.Builder(requireContext())
+                .setTitle("Delete Phrase")
+                .setMessage("Are you sure you want to delete this phrase?")
+                .setPositiveButton("Delete", (dialog, which) -> deleteCurrentPhrase())
+                .setNegativeButton(android.R.string.no, null)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .show();
+    }
+
+    private void deleteCurrentPhrase() {
+        autoCloseHandler.removeCallbacks(autoCloseRunnable); // Stop auto-close
+
+        if (currentPhrase != null && !currentPhrase.isEmpty()) {
+            SharedPreferences prefs = requireContext().getSharedPreferences(USER_PHRASES_PREFS, Context.MODE_PRIVATE);
+            Set<String> currentPhrases = prefs.getStringSet(KEY_USER_PHRASES, new HashSet<>());
+            Set<String> newPhrases = new HashSet<>(currentPhrases);
+
+            if (newPhrases.remove(currentPhrase)) {
+                prefs.edit().putStringSet(KEY_USER_PHRASES, newPhrases).apply();
+            }
+        }
+
+        if (isAdded()) {
+            getParentFragmentManager().popBackStack(); // Close fragment
+        }
     }
 }

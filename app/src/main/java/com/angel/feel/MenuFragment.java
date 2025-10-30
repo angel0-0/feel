@@ -48,7 +48,6 @@ public class MenuFragment extends Fragment {
         fallingCountdownText = view.findViewById(R.id.falling_countdown_text);
         risingCountdownText = view.findViewById(R.id.rising_countdown_text);
 
-        // Set custom font for the countdown timers
         Typeface anotherTagFont = ResourcesCompat.getFont(requireContext(), R.font.another_tag);
         fallingCountdownText.setTypeface(anotherTagFont);
         risingCountdownText.setTypeface(anotherTagFont);
@@ -75,7 +74,6 @@ public class MenuFragment extends Fragment {
     @Override
     public void onStop() {
         super.onStop();
-        // Cancel timers to avoid memory leaks and incorrect behavior
         if (fallingTimer != null) {
             fallingTimer.cancel();
         }
@@ -118,7 +116,6 @@ public class MenuFragment extends Fragment {
             @Override
             public void onFinish() {
                 enableButton(button, countdownText);
-                // Clear the timestamp so it doesn't lock again on resume
                 clearUnlockTimestamp(key);
             }
         };
@@ -152,15 +149,12 @@ public class MenuFragment extends Fragment {
     private void openPhraseFragment(String category, int colorResId, boolean shouldClose) {
         PhraseFragment phraseFragment = PhraseFragment.newInstance(category, colorResId);
 
-        // The phrase fragment will close itself after a delay
-        // This logic is handled within PhraseFragment.java
-
         getParentFragmentManager().beginTransaction()
                 .setCustomAnimations(
-                        android.R.anim.fade_in,  // enter
-                        android.R.anim.fade_out, // exit
-                        android.R.anim.fade_in,  // popEnter
-                        android.R.anim.fade_out  // popExit
+                        android.R.anim.fade_in,
+                        android.R.anim.fade_out,
+                        android.R.anim.fade_in,
+                        android.R.anim.fade_out
                 )
                 .replace(R.id.fragment_container, phraseFragment)
                 .addToBackStack(null)
