@@ -46,14 +46,21 @@ public class MenuFragment extends Fragment {
         fallingCountdownText.setTypeface(anotherTagFont);
         risingCountdownText.setTypeface(anotherTagFont);
 
-        view.findViewById(R.id.you_button).setOnClickListener(v -> openPhraseFragment("you", R.color.eng_violet));
+        MainActivity mainActivity = (MainActivity) getActivity();
+
+        view.findViewById(R.id.you_button).setOnClickListener(v -> {
+            if (mainActivity != null) mainActivity.setWindowBrightness(-1f); // Restore auto brightness
+            openPhraseFragment("you", R.color.eng_violet);
+        });
 
         fallingButton.setOnClickListener(v -> {
+            if (mainActivity != null) mainActivity.setFallingBrightness(); // Conditionally set brightness to low
             CooldownManager.startCooldown(requireContext(), "falling");
             openPhraseFragment("falling", R.color.ultraviolet_light);
         });
 
         risingButton.setOnClickListener(v -> {
+            if (mainActivity != null) mainActivity.setRisingBrightness(); // Conditionally set brightness to high
             CooldownManager.startCooldown(requireContext(), "rising");
             openPhraseFragment("rising", R.color.mn_blue);
         });
@@ -62,6 +69,10 @@ public class MenuFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+        // Restore auto-brightness when returning to the menu
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).setWindowBrightness(-1f);
+        }
         startUpdatingCountdown();
     }
 
