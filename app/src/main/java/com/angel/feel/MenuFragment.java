@@ -1,10 +1,9 @@
 package com.angel.feel;
 
-import android.content.Context;
-import android.content.SharedPreferences;
 import android.graphics.Typeface;
 import android.os.Bundle;
-import android.os.CountDownTimer;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -20,18 +19,13 @@ import java.util.concurrent.TimeUnit;
 
 public class MenuFragment extends Fragment {
 
-    private static final String PREFS_NAME = "FeelAppPrefs";
-    private static final String KEY_FALLING_UNLOCK_TIME = "falling_unlock_time";
-    private static final String KEY_RISING_UNLOCK_TIME = "rising_unlock_time";
-    private static final long BLOCK_DURATION_MS = 3000; // 60 seconds (para fines de tests son 3 segundos)
-
     private Button fallingButton;
     private Button risingButton;
     private TextView fallingCountdownText;
     private TextView risingCountdownText;
 
-    private CountDownTimer fallingTimer;
-    private CountDownTimer risingTimer;
+    private final Handler countdownHandler = new Handler(Looper.getMainLooper());
+    private Runnable countdownRunnable;
 
     @Nullable
     @Override
@@ -52,101 +46,77 @@ public class MenuFragment extends Fragment {
         fallingCountdownText.setTypeface(anotherTagFont);
         risingCountdownText.setTypeface(anotherTagFont);
 
-        view.findViewById(R.id.you_button).setOnClickListener(v -> openPhraseFragment("you", R.color.eng_violet, false));
+        MainActivity mainActivity = (MainActivity) getActivity();
+
+        view.findViewById(R.id.you_button).setOnClickListener(v -> {
+            if (mainActivity != null) mainActivity.setWindowBrightness(-1f); // Restore auto brightness
+            openPhraseFragment("you", R.color.eng_violet);
+        });
 
         fallingButton.setOnClickListener(v -> {
-            openPhraseFragment("falling", R.color.ultraviolet_light, true);
-            saveUnlockTimestamp(KEY_FALLING_UNLOCK_TIME);
+            if (mainActivity != null) mainActivity.setFallingBrightness(); // Conditionally set brightness to low
+            CooldownManager.startCooldown(requireContext(), "falling");
+            openPhraseFragment("falling", R.color.ultraviolet_light);
         });
 
         risingButton.setOnClickListener(v -> {
-            openPhraseFragment("rising", R.color.mn_blue, true);
-            saveUnlockTimestamp(KEY_RISING_UNLOCK_TIME);
+            if (mainActivity != null) mainActivity.setRisingBrightness(); // Conditionally set brightness to high
+            CooldownManager.startCooldown(requireContext(), "rising");
+            openPhraseFragment("rising", R.color.mn_blue);
         });
     }
 
     @Override
     public void onResume() {
         super.onResume();
-        updateButtonStates();
+        // Restore auto-brightness when returning to the menu
+        if (getActivity() instanceof MainActivity) {
+            ((MainActivity) getActivity()).setWindowBrightness(-1f);
+        }
+        startUpdatingCountdown();
     }
 
     @Override
-    public void onStop() {
-        super.onStop();
-        if (fallingTimer != null) {
-            fallingTimer.cancel();
-        }
-        if (risingTimer != null) {
-            risingTimer.cancel();
-        }
+    public void onPause() {
+        super.onPause();
+        stopUpdatingCountdown();
     }
 
-    private void updateButtonStates() {
-        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-
-        long fallingUnlockTime = prefs.getLong(KEY_FALLING_UNLOCK_TIME, 0);
-        long risingUnlockTime = prefs.getLong(KEY_RISING_UNLOCK_TIME, 0);
-
-        long currentTime = System.currentTimeMillis();
-
-        checkAndStartTimer(fallingButton, fallingCountdownText, fallingUnlockTime - currentTime, KEY_FALLING_UNLOCK_TIME);
-        checkAndStartTimer(risingButton, risingCountdownText, risingUnlockTime - currentTime, KEY_RISING_UNLOCK_TIME);
-    }
-
-    private void checkAndStartTimer(Button button, TextView countdownText, long millisRemaining, String key) {
-        if (millisRemaining > 0) {
-            startTimer(button, countdownText, millisRemaining, key);
-        } else {
-            enableButton(button, countdownText);
-        }
-    }
-
-    private void startTimer(Button button, TextView countdownText, long millisRemaining, String key) {
-        button.setEnabled(false);
-        button.setAlpha(0.5f);
-        countdownText.setVisibility(View.VISIBLE);
-
-        CountDownTimer timer = new CountDownTimer(millisRemaining, 1000) {
+    private void startUpdatingCountdown() {
+        countdownRunnable = new Runnable() {
             @Override
-            public void onTick(long millisUntilFinished) {
-                countdownText.setText(String.format("%ds", TimeUnit.MILLISECONDS.toSeconds(millisUntilFinished)));
-            }
-
-            @Override
-            public void onFinish() {
-                enableButton(button, countdownText);
-                clearUnlockTimestamp(key);
+            public void run() {
+                updateButtonState("falling", fallingButton, fallingCountdownText);
+                updateButtonState("rising", risingButton, risingCountdownText);
+                countdownHandler.postDelayed(this, 1000);
             }
         };
+        countdownHandler.post(countdownRunnable);
+    }
 
-        if (key.equals(KEY_FALLING_UNLOCK_TIME)) {
-            fallingTimer = timer;
+    private void stopUpdatingCountdown() {
+        countdownHandler.removeCallbacks(countdownRunnable);
+    }
+
+    private void updateButtonState(String category, Button button, TextView countdownText) {
+        if (!isAdded()) return; // Ensure fragment is still attached
+
+        long remainingMillis = CooldownManager.getRemainingCooldown(requireContext(), category);
+
+        if (remainingMillis > 0) {
+            button.setEnabled(false);
+            button.setAlpha(0.5f);
+            countdownText.setVisibility(View.VISIBLE);
+            long seconds = TimeUnit.MILLISECONDS.toSeconds(remainingMillis);
+            countdownText.setText(String.format("%02d:%02d", seconds / 60, seconds % 60));
         } else {
-            risingTimer = timer;
+            button.setEnabled(true);
+            button.setAlpha(1.0f);
+            countdownText.setVisibility(View.GONE);
         }
-        timer.start();
     }
 
-    private void enableButton(Button button, TextView countdownText) {
-        button.setEnabled(true);
-        button.setAlpha(1.0f);
-        countdownText.setVisibility(View.GONE);
-    }
-
-    private void saveUnlockTimestamp(String key) {
-        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
-        editor.putLong(key, System.currentTimeMillis() + BLOCK_DURATION_MS);
-        editor.apply();
-    }
-
-    private void clearUnlockTimestamp(String key) {
-        SharedPreferences prefs = requireActivity().getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        prefs.edit().remove(key).apply();
-    }
-
-    private void openPhraseFragment(String category, int colorResId, boolean shouldClose) {
+    private void openPhraseFragment(String category, int colorResId) {
         PhraseFragment phraseFragment = PhraseFragment.newInstance(category, colorResId);
 
         getParentFragmentManager().beginTransaction()
