@@ -31,7 +31,7 @@ public class SplashFragment extends Fragment {
 
         if (mainActivity != null) {
             feelButton.setOnClickListener(v -> {
-                // Navigate to MenuFragment, and allow back navigation
+                // Always navigate to MenuFragment, and allow back navigation
                 mainActivity.navigateTo(new MenuFragment(), true);
             });
 
