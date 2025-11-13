@@ -81,6 +81,8 @@ public class PhraseFragment extends Fragment {
         Typeface typeface;
         if ("you".equalsIgnoreCase(category)) {
             typeface = ResourcesCompat.getFont(requireContext(), R.font.lostar);
+        } else if ("rising".equalsIgnoreCase(category) || "falling".equalsIgnoreCase(category)) {
+            typeface = ResourcesCompat.getFont(requireContext(), R.font.madison_street);
         } else {
             typeface = ResourcesCompat.getFont(requireContext(), R.font.tribtwo);
         }
