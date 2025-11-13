@@ -318,7 +318,7 @@ Gestión del contenido
 
 ### Fase 3: Funcionalidades Avanzadas (Evidencia 3)
 
--  [ ] Integración de cámara y preview
+
 -  [ ] Implementación de servicios y threading
 -  [ ] Integración de sensores
 -  [ ] Sistema de notificaciones
