@@ -120,11 +120,11 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
     }
 
     private float getBrightnessForLux(float lux) {
-        if (lux < 50) return 0.1f;
-        if (lux < 200) return 0.3f;
-        if (lux < 1000) return 0.6f;
-        if (lux < 5000) return 0.8f;
-        return 1.0f;
+        if (lux < 50) return 0.1f;    // Very dark
+        if (lux < 200) return 0.3f;   // Dim indoor light
+        if (lux < 1000) return 0.6f;  // Normal indoor light
+        if (lux < 5000) return 0.8f;  // Bright indoor or cloudy outdoor
+        return 1.0f;                  // Direct sunlight
     }
 
     private void createNotificationChannel() {
@@ -134,6 +134,7 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             int importance = NotificationManager.IMPORTANCE_DEFAULT;
             NotificationChannel channel = new NotificationChannel(CHANNEL_ID, name, importance);
             channel.setDescription(description);
+
             getSystemService(NotificationManager.class).createNotificationChannel(channel);
         }
     }
