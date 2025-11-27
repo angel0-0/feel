@@ -4,13 +4,16 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
 import android.hardware.SensorEventListener;
 import android.hardware.SensorManager;
 import android.os.Build;
 import android.os.Bundle;
+import android.view.View;
 import android.view.WindowManager;
+import android.widget.ImageButton;
 import androidx.activity.result.ActivityResultLauncher;
 import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.appcompat.app.AppCompatActivity;
@@ -19,13 +22,27 @@ import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentManager;
 import androidx.fragment.app.FragmentTransaction;
 
-public class MainActivity extends AppCompatActivity implements SensorEventListener {
+import com.angel.feel.ShakeListener;
+
+import java.util.Random;
+
+public class MainActivity extends AppCompatActivity implements SensorEventListener, FragmentManager.OnBackStackChangedListener {
 
     public static final String CHANNEL_ID = "cooldown_channel";
 
     private SensorManager sensorManager;
     private Sensor lightSensor;
+    private Sensor accelerometer;
+    private ImageButton mainBackButton;
     private boolean isAutoBrightnessEnabled = true;
+
+    private float lastX, lastY, lastZ;
+    private long lastShakeTime;
+    private static final int SHAKE_THRESHOLD = 800; // Adjust as needed
+    private static final int SHAKE_COOLDOWN = 1000; // 1 second
+
+    private View mainContainer;
+    private final Random random = new Random();
 
     private final ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(),
@@ -37,15 +54,23 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        mainContainer = findViewById(R.id.main_container);
+        mainBackButton = findViewById(R.id.main_back_button);
+        mainBackButton.setOnClickListener(v -> onBackPressed());
+
         sensorManager = (SensorManager) getSystemService(Context.SENSOR_SERVICE);
         lightSensor = sensorManager.getDefaultSensor(Sensor.TYPE_LIGHT);
+        accelerometer = sensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER);
 
         createNotificationChannel();
         requestNotificationPermission();
 
+        getSupportFragmentManager().addOnBackStackChangedListener(this);
+
         if (savedInstanceState == null) {
             navigateTo(new SplashFragment(), false);
         }
+        updateBackButtonVisibility();
     }
 
     @Override
@@ -54,12 +79,25 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
         if (lightSensor != null) {
             sensorManager.registerListener(this, lightSensor, SensorManager.SENSOR_DELAY_NORMAL);
         }
+        if (accelerometer != null) {
+            sensorManager.registerListener(this, accelerometer, SensorManager.SENSOR_DELAY_NORMAL);
+        }
     }
 
     @Override
     protected void onPause() {
         super.onPause();
         sensorManager.unregisterListener(this);
+    }
+
+    @Override
+    public void onBackStackChanged() {
+        updateBackButtonVisibility();
+    }
+
+    private void updateBackButtonVisibility() {
+        int backStackCount = getSupportFragmentManager().getBackStackEntryCount();
+        mainBackButton.setVisibility(backStackCount > 0 ? View.VISIBLE : View.GONE);
     }
 
     public void navigateTo(Fragment fragment, boolean addToBackStack) {
@@ -111,12 +149,46 @@ public class MainActivity extends AppCompatActivity implements SensorEventListen
             float lux = event.values[0];
             float brightness = getBrightnessForLux(lux);
             setWindowBrightness(brightness);
+        } else if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            detectShake(event);
         }
     }
 
     @Override
     public void onAccuracyChanged(Sensor sensor, int accuracy) {
         // Not needed
+    }
+
+    private void detectShake(SensorEvent event) {
+        long currentTime = System.currentTimeMillis();
+        if ((currentTime - lastShakeTime) > SHAKE_COOLDOWN) {
+            float x = event.values[0];
+            float y = event.values[1];
+            float z = event.values[2];
+
+            float speed = Math.abs(x + y + z - lastX - lastY - lastZ) / (currentTime - lastShakeTime) * 10000;
+
+            if (speed > SHAKE_THRESHOLD) {
+                lastShakeTime = currentTime;
+                changeBackgroundColor();
+            }
+
+            lastX = x;
+            lastY = y;
+            lastZ = z;
+        }
+    }
+
+    private void changeBackgroundColor() {
+        int color = Color.argb(255, random.nextInt(256), random.nextInt(256), random.nextInt(256));
+        if (mainContainer != null) {
+            mainContainer.setBackgroundColor(color);
+        }
+
+        Fragment currentFragment = getSupportFragmentManager().findFragmentById(R.id.fragment_container);
+        if (currentFragment instanceof ShakeListener) {
+            ((ShakeListener) currentFragment).onShakeAndColorChange(color);
+        }
     }
 
     private float getBrightnessForLux(float lux) {

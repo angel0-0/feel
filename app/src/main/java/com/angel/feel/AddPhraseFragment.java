@@ -12,19 +12,22 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import com.angel.feel.ShakeListener;
 
 import java.util.HashSet;
 import java.util.Set;
 
-public class AddPhraseFragment extends Fragment {
+public class AddPhraseFragment extends Fragment implements ShakeListener {
 
     private EditText newPhraseEditText;
     private Button savePhraseButton;
+    private View mainView;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_add_phrase, container, false);
+        mainView = inflater.inflate(R.layout.fragment_add_phrase, container, false);
+        return mainView;
     }
 
     @Override
@@ -35,6 +38,13 @@ public class AddPhraseFragment extends Fragment {
         savePhraseButton = view.findViewById(R.id.save_phrase_button);
 
         savePhraseButton.setOnClickListener(v -> savePhrase());
+    }
+
+    @Override
+    public void onShakeAndColorChange(int color) {
+        if (mainView != null) {
+            mainView.setBackgroundColor(color);
+        }
     }
 
     private void savePhrase() {
