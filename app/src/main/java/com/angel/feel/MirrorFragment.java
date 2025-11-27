@@ -18,6 +18,7 @@ import android.view.Surface;
 import android.view.TextureView;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -27,15 +28,14 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
+import com.angel.feel.ShakeListener;
 
-import java.util.Arrays;
 import java.util.Collections;
-import java.util.Comparator;
 import java.util.HashSet;
 import java.util.Random;
 import java.util.Set;
 
-public class MirrorFragment extends Fragment {
+public class MirrorFragment extends Fragment implements ShakeListener {
 
     private TextureView textureView;
     private CameraDevice cameraDevice;
@@ -43,6 +43,8 @@ public class MirrorFragment extends Fragment {
     private Handler backgroundHandler;
     private HandlerThread backgroundThread;
     private Size previewSize;
+    private int sensorOrientation;
+    private View mainView;
 
     private final ActivityResultLauncher<String> requestPermissionLauncher = registerForActivityResult(
             new ActivityResultContracts.RequestPermission(),
@@ -86,16 +88,23 @@ public class MirrorFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_mirror, container, false);
+        mainView = inflater.inflate(R.layout.fragment_mirror, container, false);
+        return mainView;
     }
 
     @Override
     public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
         super.onViewCreated(view, savedInstanceState);
         textureView = view.findViewById(R.id.camera_preview);
-        // This line is CRITICAL to prevent the crash. My sincere apologies for my previous errors.
         textureView.setOpaque(false);
         loadYouPhrase(view);
+
+        ImageButton backButton = view.findViewById(R.id.back_button);
+        backButton.setOnClickListener(v -> {
+            if (getActivity() != null) {
+                getActivity().onBackPressed();
+            }
+        });
     }
 
     @Override
@@ -116,8 +125,15 @@ public class MirrorFragment extends Fragment {
         super.onPause();
     }
 
+    @Override
+    public void onShakeAndColorChange(int color) {
+        if (mainView != null) {
+            mainView.setBackgroundColor(color);
+        }
+    }
+
     private void openCameraWithPermissionCheck() {
-        if (!isAdded()) return; // Prevent crash if fragment is detached
+        if (!isAdded()) return;
         if (ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED) {
             openCamera();
         } else {
@@ -126,7 +142,7 @@ public class MirrorFragment extends Fragment {
     }
 
     private void openCamera() {
-        if (!isAdded()) return; // Prevent crash
+        if (!isAdded()) return;
         CameraManager manager = (CameraManager) requireActivity().getSystemService(Context.CAMERA_SERVICE);
         try {
             String cameraId = null;
@@ -134,6 +150,7 @@ public class MirrorFragment extends Fragment {
                 CameraCharacteristics characteristics = manager.getCameraCharacteristics(id);
                 if (characteristics.get(CameraCharacteristics.LENS_FACING) == CameraCharacteristics.LENS_FACING_FRONT) {
                     cameraId = id;
+                    sensorOrientation = characteristics.get(CameraCharacteristics.SENSOR_ORIENTATION);
                     StreamConfigurationMap map = characteristics.get(CameraCharacteristics.SCALER_STREAM_CONFIGURATION_MAP);
                     assert map != null;
                     previewSize = chooseOptimalPreviewSize(map.getOutputSizes(SurfaceTexture.class), textureView.getWidth(), textureView.getHeight());
@@ -173,9 +190,7 @@ public class MirrorFragment extends Fragment {
                     }
                 }
 
-                @Override
-                public void onConfigureFailed(@NonNull CameraCaptureSession session) {
-                }
+                @Override public void onConfigureFailed(@NonNull CameraCaptureSession session) {}
             }, null);
         } catch (CameraAccessException e) {
             e.printStackTrace();
@@ -183,53 +198,57 @@ public class MirrorFragment extends Fragment {
     }
 
     private void transformTextureView(int viewWidth, int viewHeight) {
-        if (textureView == null || previewSize == null || viewWidth == 0 || viewHeight == 0 || !isAdded()) return;
+        if (textureView == null || previewSize == null || viewWidth == 0 || viewHeight == 0 || !isAdded()) {
+            return;
+        }
 
         Matrix matrix = new Matrix();
         RectF viewRect = new RectF(0, 0, viewWidth, viewHeight);
         float centerX = viewRect.centerX();
         float centerY = viewRect.centerY();
 
-        // The camera sensor is landscape. The preview size is landscape (e.g., 1280x720).
-        // The view is portrait. We must rotate the preview to match.
-        float previewWidth = previewSize.getWidth();
-        float previewHeight = previewSize.getHeight();
+        float bufferWidth = previewSize.getWidth();
+        float bufferHeight = previewSize.getHeight();
 
-        RectF bufferRect = new RectF(0, 0, previewWidth, previewHeight);
+        int displayRotation = requireActivity().getWindowManager().getDefaultDisplay().getRotation();
+        int totalRotation = (sensorOrientation - (displayRotation * 90) + 360) % 360;
 
-        // The view is portrait, so we need to rotate the buffer's rectangle for calculation
-        RectF rotatedBufferRect = new RectF(0, 0, previewHeight, previewWidth); // Swapped dimensions
-        rotatedBufferRect.offset(centerX - rotatedBufferRect.centerX(), centerY - rotatedBufferRect.centerY());
+        float previewRotatedWidth, previewRotatedHeight;
+        if (totalRotation == 90 || totalRotation == 270) {
+            previewRotatedWidth = bufferHeight;
+            previewRotatedHeight = bufferWidth;
+        } else {
+            previewRotatedWidth = bufferWidth;
+            previewRotatedHeight = bufferHeight;
+        }
 
-        // Use `setRectToRect` to map the portrait-oriented buffer rectangle to the view rectangle
-        // Using `ScaleToFit.CENTER` to match the ImageView's `fitCenter` scaleType. This is the fix.
-        matrix.setRectToRect(viewRect, rotatedBufferRect, Matrix.ScaleToFit.CENTER);
-        
-        // Apply the necessary rotation since the buffer is actually landscape
-        matrix.postRotate(-90, centerX, centerY);
+        float scale = Math.max(
+                (float) viewWidth / previewRotatedWidth,
+                (float) viewHeight / previewRotatedHeight);
 
-        // Mirror the view for the front camera
+        matrix.postScale(scale, scale, centerX, centerY);
+        matrix.postRotate(totalRotation, centerX, centerY);
         matrix.postScale(-1, 1, centerX, centerY);
-
+        
         textureView.setTransform(matrix);
     }
 
 
     private Size chooseOptimalPreviewSize(Size[] choices, int viewWidth, int viewHeight) {
-        float targetRatio = (float) viewHeight / viewWidth; // Portrait aspect ratio
+        if (viewWidth == 0 || viewHeight == 0) return choices[0];
+        float targetRatio = (float) viewWidth / viewHeight;
         Size optimalSize = null;
         double minDiff = Double.MAX_VALUE;
 
         for (Size size : choices) {
-            // The camera sizes are landscape, so we compare width/height to the view's height/width
-            float ratio = (float) size.getWidth() / size.getHeight();
-            if (Math.abs(ratio - targetRatio) > 0.05) continue;
-            if (Math.abs(size.getHeight() - viewHeight) < minDiff) {
-                optimalSize = size;
-                minDiff = Math.abs(size.getHeight() - viewHeight);
+            float ratio = (float) size.getWidth() / (float) size.getHeight();
+            if (Math.abs(ratio - targetRatio) < 0.1) { 
+                if (Math.abs(size.getHeight() - viewHeight) < minDiff) {
+                    optimalSize = size;
+                    minDiff = Math.abs(size.getHeight() - viewHeight);
+                }
             }
         }
-
         if (optimalSize == null) {
             minDiff = Double.MAX_VALUE;
             for (Size size : choices) {
@@ -241,7 +260,6 @@ public class MirrorFragment extends Fragment {
         }
         return optimalSize;
     }
-
 
     private void closeCamera() {
         if (cameraCaptureSession != null) { cameraCaptureSession.close(); cameraCaptureSession = null; }

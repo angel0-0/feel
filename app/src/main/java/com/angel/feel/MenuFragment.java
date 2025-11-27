@@ -14,15 +14,17 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.core.content.res.ResourcesCompat;
 import androidx.fragment.app.Fragment;
+import com.angel.feel.ShakeListener;
 
 import java.util.concurrent.TimeUnit;
 
-public class MenuFragment extends Fragment {
+public class MenuFragment extends Fragment implements ShakeListener {
 
     private Button fallingButton;
     private Button risingButton;
     private TextView fallingCountdownText;
     private TextView risingCountdownText;
+    private View mainView;
 
     private final Handler countdownHandler = new Handler(Looper.getMainLooper());
     private Runnable countdownRunnable;
@@ -30,7 +32,8 @@ public class MenuFragment extends Fragment {
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container, @Nullable Bundle savedInstanceState) {
-        return inflater.inflate(R.layout.fragment_menu, container, false);
+        mainView = inflater.inflate(R.layout.fragment_menu, container, false);
+        return mainView;
     }
 
     @Override
@@ -46,7 +49,6 @@ public class MenuFragment extends Fragment {
         fallingCountdownText.setTypeface(anotherTagFont);
         risingCountdownText.setTypeface(anotherTagFont);
 
-        // Restore navigation to MirrorFragment
         view.findViewById(R.id.you_button).setOnClickListener(v -> {
             if (getActivity() instanceof MainActivity) {
                 ((MainActivity) getActivity()).navigateTo(new MirrorFragment(), true);
@@ -76,6 +78,13 @@ public class MenuFragment extends Fragment {
         stopUpdatingCountdown();
     }
 
+    @Override
+    public void onShakeAndColorChange(int color) {
+        if (mainView != null) {
+            mainView.setBackgroundColor(color);
+        }
+    }
+
     private void startUpdatingCountdown() {
         countdownRunnable = new Runnable() {
             @Override
@@ -93,7 +102,7 @@ public class MenuFragment extends Fragment {
     }
 
     private void updateButtonState(String category, Button button, TextView countdownText) {
-        if (!isAdded()) return; // Ensure fragment is still attached
+        if (!isAdded()) return; 
 
         long remainingMillis = CooldownManager.getRemainingCooldown(requireContext(), category);
 
